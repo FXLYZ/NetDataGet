@@ -7,6 +7,7 @@
 #include "NetDataGet.h"
 #include "NetDataGetDlg.h"
 #include "afxdialogex.h"
+#include "pcap.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -165,14 +166,47 @@ HCURSOR CNetDataGetDlg::OnQueryDragIcon()
 void CNetDataGetDlg::OnBnClickedButtonStart()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	//获取网卡
-	pcap_if_t *allevs;
+	pcap_if_t* alldevs; 	               //指向设备链表首部的指针
 	pcap_if_t* d;
 	pcap_addr_t* a;
-	char errbuf[PCAP_ERRBUF_SIZE];
-	// 显示选择网卡info
+	char		errbuf[PCAP_ERRBUF_SIZE];	//错误信息缓冲区
+	//获得本机的设备列表
+	if (pcap_findalldevs_ex(PCAP_SRC_IF_STRING, 	//获取本机的接口设备
+		NULL,			       //无需认证
+		&alldevs, 		       //指向设备列表首部
+		errbuf			      //出错信息保存缓存区
+	) == -1)
+	{
+		//错误处理      }
 
-	//开始抓包
+		for (d = alldevs; d != NULL; d = d->next)      //显示接口列表
+		{
+			//利用d->name获取该网络接口设备的名字
+			//利用d->description获取该网络接口设备的描述信息
+			//获取该网络接口设备的IP地址信息
+			for (a = d->addresses; a != NULL; a = a->next)
+				if (a->addr->sa_family == AF_INET)  //判断该地址是否IP地址
+				{
+					//利用a->addr获取IP地址
+					//利用a->netmask获取网络掩码
+					//利用a->broadaddr获取广播地址
+					//利用a->dstaddr)获取目的地址
+				}
+		}
+		pcap_freealldevs(alldevs); //释放设备列表
+	}
+
+
+	//抓包
+
+
+	//显示
+	Data_t* IPPacket;
+	ULONG		SourceIP, DestinationIP;
+	IPPacket = (Data_t*)pkt_data;
+	SourceIP = ntohl(IPPacket->IPHeader.SrcIP);
+	DestinationIP = ntohl(IPPacket->IPHeader.DstIP);
+
 
 }
 
