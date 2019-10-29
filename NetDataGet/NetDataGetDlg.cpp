@@ -8,14 +8,40 @@
 #include "NetDataGetDlg.h"
 #include "afxdialogex.h"
 #include "pcap.h"
-
+#include<string>
+using namespace std;
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
 
 #define WM_MYMESSAGE WM_USER+1
 
-
+#pragma pack(1)
+struct FrameHeader_t
+{
+	BYTE DesMAC[6];
+	BYTE SrcMAC[6];
+	WORD FrameTYPE;
+};
+struct IPHeader_t
+{
+	BYTE Ver_HLen;
+	BYTE TOS;
+	WORD TotalLen;
+	WORD ID;
+	WORD Flag_Segment;
+	BYTE TTL;
+	BYTE Protocol;
+	WORD Checksum;
+	ULONG SrcIP;
+	ULONG DstIP;
+};
+struct Data_t
+{
+	FrameHeader_t  FrameHeader;
+	IPHeader_t IPHeader;
+};
+#pragma pack()
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
 class CAboutDlg : public CDialogEx
@@ -132,7 +158,7 @@ BOOL CNetDataGetDlg::OnInitDialog()
 		{
 			dnames[count] = d->name;
 			dinfos[count] = d->description;
-			NetWorkCardBox.AddString( dnames[count]);
+			NetWorkCardBox.InsertString(count,dnames[count]);
 			count++;
 		}
 		NetWorkCardInfo.SetWindowTextW(L"获取网卡成功");
@@ -190,29 +216,21 @@ HCURSOR CNetDataGetDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-
 UINT TheCapture(LPVOID pParam);
 void CNetDataGetDlg::OnBnClickedButtonStart()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	pcap_if_t* alldevs; 	               //指向设备链表首部的指针
-	pcap_if_t* d;
 	pcap_t* adhandle;
 	char errbuf[PCAP_ERRBUF_SIZE];
-	//获得本机的设备列表
-
-	if (pcap_findalldevs_ex(PCAP_SRC_IF_STRING, NULL, &alldevs, errbuf) == -1)
-	{
-		NetWorkCardInfo.SetWindowTextW(L"获取网卡失败");
-		return;
-	}
-
+	
 	//抓包
 	int index=NetWorkCardBox.GetCurSel();
-	int i;
-	for (d = alldevs, i = 0; i < index; d = d->next, i++);
 
-	if ((adhandle = pcap_open(d->name,          // 设备名
+	USES_CONVERSION;
+	string s(W2A(dnames[index]));
+	const char* namecstr = s.c_str();
+
+	if ((adhandle = pcap_open(namecstr,          // 设备名
 		65536,            // 要捕捉的数据包的部分 
 						  // 65535保证能捕获到不同数据链路层上的每个数据包的全部内容
 		PCAP_OPENFLAG_PROMISCUOUS,    // 混杂模式
@@ -222,20 +240,10 @@ void CNetDataGetDlg::OnBnClickedButtonStart()
 	)) == NULL)
 	{
 		DataContent.SetWindowTextW(L"获取网卡失败");
-		pcap_freealldevs(alldevs);
 		return;
 	}
-	NetWorkCardInfo.SetWindowTextW(CString(d->name) +L"\r\n"+CString(d->description));
-	pcap_freealldevs(alldevs);
+	NetWorkCardInfo.SetWindowTextW( dnames[index]+L"\r\n"+dinfos[index]);
 	CWinThread* MyThread = AfxBeginThread(TheCapture, adhandle, THREAD_PRIORITY_NORMAL, 0, 0, NULL);
-	////显示
-	//Data_t* IPPacket;
-	//ULONG		SourceIP, DestinationIP;
-	//IPPacket = (Data_t*)pkt_data;
-	//SourceIP = ntohl(IPPacket->IPHeader.SrcIP);
-	//DestinationIP = ntohl(IPPacket->IPHeader.DstIP);
-
-
 }
 
 
@@ -243,6 +251,7 @@ void CNetDataGetDlg::OnBnClickedButtonStop()
 {
 	// TODO: 在此添加控件通知处理程序代码
 	//停止抓包
+	//WaitForSingleObject(MyThread, INFINITE);
 }
 
 struct msginfo
@@ -255,10 +264,9 @@ afx_msg LRESULT CNetDataGetDlg::OnMymessage(WPARAM wParam, LPARAM lParam)
 	msginfo* info = (msginfo*)lParam;
 	CString temp;
 	DataContent.GetWindowTextW(temp);
-	DataContent.SetWindowTextW(temp +L"1:  \r\n"+info->content);
+	DataContent.SetWindowTextW(temp +info->content);
 	return 0;
 }
-
 
 void CNetDataGetDlg::OnTimer(UINT_PTR nIDEvent)
 {
@@ -268,9 +276,7 @@ void CNetDataGetDlg::OnTimer(UINT_PTR nIDEvent)
 
 UINT TheCapture(LPVOID pParam)
 {
-	msginfo info;
-	info.content = L"pre";
-	msginfo* pinfo = &info;
+	msginfo* pinfo=new msginfo();
 	struct tm* ltime;
 	char timestr[16];
 	struct pcap_pkthdr* header;
@@ -279,30 +285,38 @@ UINT TheCapture(LPVOID pParam)
 	pcap_t* adhandle=(pcap_t*)pParam;
 	int res;
 	while ((res = pcap_next_ex(adhandle, &header, &pkt_data)) >= 0) {
-
 		if (res == 0)
 			/* 超时时间到 */
 			continue;
-		AfxGetApp()->m_pMainWnd->PostMessageW(WM_MYMESSAGE, 0, (LPARAM)pinfo);
 		/* 将时间戳转换成可识别的格式 */
 		local_tv_sec = header->ts.tv_sec;
 		ltime = localtime(&local_tv_sec);
 		strftime(timestr, sizeof timestr, "%H:%M:%S", ltime);
-		CString data;
-		data.Format(_T("%s,%.6d len:%d\r\n"), timestr, header->ts.tv_usec, header->len);
-		data = L"ok66";
 
-		msginfo info;
-		info.content = data;
-		msginfo* pinfo = &info;
-		AfxGetApp()->m_pMainWnd->PostMessageW(WM_MYMESSAGE, 0, (LPARAM)pinfo);
+		Data_t* IPPacket;
+		ULONG SourceIP, DestinationIP;
+		IPPacket = (Data_t*)pkt_data;
+
+		SourceIP = ntohl(IPPacket->IPHeader.SrcIP);
+		DestinationIP = ntohl(IPPacket->IPHeader.DstIP);
+		int version = (IPPacket->IPHeader.Ver_HLen & 0xf0) >> 4;
+		int hlen = (IPPacket->IPHeader.Ver_HLen & 0x0f);
+		if (version==4)
+		{
+			char ID[4];
+			char Checksum[4];
+			_itoa(IPPacket->IPHeader.ID,ID,16);
+			_itoa(IPPacket->IPHeader.Checksum, Checksum, 16);
+			CString data;
+			data.Format(L"%hs,%.6d  len:%d\r\n标识:%hs  头部校验和:%hs\r\n\r\n", timestr, header->ts.tv_usec, header->len,ID,Checksum);
+			pinfo->content = data;
+			AfxGetApp()->m_pMainWnd->PostMessageW(WM_MYMESSAGE, 0, (LPARAM)pinfo);
+		}
 	}
 	if (res == -1) {
 		CString data;
-		data.Format(_T("Error reading the packets: %s\r\n"), pcap_geterr(adhandle));
-		msginfo info;
-		info.content = data;
-		msginfo* pinfo = &info;
+		data.Format(L"Error reading the packets: %hs\r\n", pcap_geterr(adhandle));
+		pinfo->content = data;
 		AfxGetApp()->m_pMainWnd->PostMessageW(WM_MYMESSAGE, 0, (LPARAM)pinfo);
 	}
 	return 0;

@@ -45,5 +45,6 @@ protected:
 	afx_msg LRESULT OnMymessage(WPARAM wParam, LPARAM lParam);
 public:
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
-	friend UINT TheCapture(LPVOID pParam);
 };
+
+
