@@ -41,4 +41,9 @@ public:
 	CString dinfos[10];
 	afx_msg void OnBnClickedButtonStart();
 	afx_msg void OnBnClickedButtonStop();
+protected:
+	afx_msg LRESULT OnMymessage(WPARAM wParam, LPARAM lParam);
+public:
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	friend UINT TheCapture(LPVOID pParam);
 };
