@@ -37,6 +37,8 @@ public:
 	CEdit NetWorkCardInfo;
 	CButton StartCatch;
 	CButton StopCatch;
+	CString dnames[10];
+	CString dinfos[10];
 	afx_msg void OnBnClickedButtonStart();
 	afx_msg void OnBnClickedButtonStop();
 };

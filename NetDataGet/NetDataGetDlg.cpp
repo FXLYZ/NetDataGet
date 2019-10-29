@@ -108,6 +108,40 @@ BOOL CNetDataGetDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
+	pcap_if_t* alldevs; 	               //指向设备链表首部的指针
+	pcap_if_t* d;
+	//pcap_addr_t* a;
+	char		errbuf[PCAP_ERRBUF_SIZE];	//错误信息缓冲区
+	//获得本机的设备列表
+	if (pcap_findalldevs_ex(PCAP_SRC_IF_STRING, 	//获取本机的接口设备
+		NULL,			       //无需认证
+		&alldevs, 		       //指向设备列表首部
+		errbuf			      //出错信息保存缓存区
+	) == -1)
+	{
+		//错误处理      }
+		int count = 0;
+		for (d = alldevs; d != NULL; d = d->next)      //显示接口列表
+		{
+			//利用d->name获取该网络接口设备的名字
+			dnames[count] = d->name;
+			dinfos[count] = d->description;
+			NetWorkCardBox.InsertString(count + 1, dnames[count]);
+			count++;
+			//利用d->description获取该网络接口设备的描述信息
+			//获取该网络接口设备的IP地址信息
+			//for (a = d->addresses; a != NULL; a = a->next)
+			//	if (a->addr->sa_family == AF_INET)  //判断该地址是否IP地址
+			//	{
+			//		//利用a->addr获取IP地址
+			//		//利用a->netmask获取网络掩码
+			//		//利用a->broadaddr获取广播地址
+			//		//利用a->dstaddr)获取目的地址
+			//	}
+		}
+		pcap_freealldevs(alldevs); //释放设备列表
+	}
+
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -168,8 +202,14 @@ void CNetDataGetDlg::OnBnClickedButtonStart()
 	// TODO: 在此添加控件通知处理程序代码
 	pcap_if_t* alldevs; 	               //指向设备链表首部的指针
 	pcap_if_t* d;
-	pcap_addr_t* a;
-	char		errbuf[PCAP_ERRBUF_SIZE];	//错误信息缓冲区
+	pcap_t* adhandle;
+	int res;
+	char errbuf[PCAP_ERRBUF_SIZE];
+	struct tm* ltime;
+	char timestr[16];
+	struct pcap_pkthdr* header;
+	const u_char* pkt_data;
+	time_t local_tv_sec;
 	//获得本机的设备列表
 	if (pcap_findalldevs_ex(PCAP_SRC_IF_STRING, 	//获取本机的接口设备
 		NULL,			       //无需认证
@@ -177,35 +217,63 @@ void CNetDataGetDlg::OnBnClickedButtonStart()
 		errbuf			      //出错信息保存缓存区
 	) == -1)
 	{
-		//错误处理      }
+		DataContent.SetWindowTextA("获取网卡失败");
+		return;
+	}
 
-		for (d = alldevs; d != NULL; d = d->next)      //显示接口列表
-		{
-			//利用d->name获取该网络接口设备的名字
-			//利用d->description获取该网络接口设备的描述信息
-			//获取该网络接口设备的IP地址信息
-			for (a = d->addresses; a != NULL; a = a->next)
-				if (a->addr->sa_family == AF_INET)  //判断该地址是否IP地址
-				{
-					//利用a->addr获取IP地址
-					//利用a->netmask获取网络掩码
-					//利用a->broadaddr获取广播地址
-					//利用a->dstaddr)获取目的地址
-				}
-		}
-		pcap_freealldevs(alldevs); //释放设备列表
+	//抓包
+	int index=NetWorkCardBox.GetCurSel();
+	int i;
+	for (d = alldevs, i = 0; i < index - 1; d = d->next, i++);
+
+	if ((adhandle = pcap_open(d->name,          // 设备名
+		65536,            // 要捕捉的数据包的部分 
+						  // 65535保证能捕获到不同数据链路层上的每个数据包的全部内容
+		PCAP_OPENFLAG_PROMISCUOUS,    // 混杂模式
+		1000,             // 读取超时时间
+		NULL,             // 远程机器验证
+		errbuf            // 错误缓冲池
+	)) == NULL)
+	{
+		fprintf(stderr, "\nUnable to open the adapter. %s is not supported by WinPcap\n", d->name);
+		/* 释放设列表 */
+		pcap_freealldevs(alldevs);
+		return;
+	}
+	NetWorkCardInfo.SetWindowTextA(d->description);
+	pcap_freealldevs(alldevs);
+	while ((res = pcap_next_ex(adhandle, &header, &pkt_data)) >= 0) {
+
+		if (res == 0)
+			/* 超时时间到 */
+			continue;
+
+		/* 将时间戳转换成可识别的格式 */
+		local_tv_sec = header->ts.tv_sec;
+		ltime = localtime(&local_tv_sec);
+		strftime(timestr, sizeof timestr, "%H:%M:%S", ltime);
+		CString temp,data;
+		DataContent.GetWindowTextA(temp);
+		data.Format("%s,%.6d len:%d\n", timestr, header->ts.tv_usec, header->len);
+		//printf("%s,%.6d len:%d\n", timestr, header->ts.tv_usec, header->len);
+		DataContent.SetWindowTextA(temp + data);
+	}
+
+	if (res == -1) {
+		CString temp, data;
+		DataContent.GetWindowTextA(temp);
+		data.Format("Error reading the packets: %s\n", pcap_geterr(adhandle));
+		//printf("Error reading the packets: %s\n", pcap_geterr(adhandle));
+		return;
 	}
 
 
-	//抓包
-
-
 	//显示
-	Data_t* IPPacket;
-	ULONG		SourceIP, DestinationIP;
-	IPPacket = (Data_t*)pkt_data;
-	SourceIP = ntohl(IPPacket->IPHeader.SrcIP);
-	DestinationIP = ntohl(IPPacket->IPHeader.DstIP);
+	//Data_t* IPPacket;
+	//ULONG		SourceIP, DestinationIP;
+	//IPPacket = (Data_t*)pkt_data;
+	//SourceIP = ntohl(IPPacket->IPHeader.SrcIP);
+	//DestinationIP = ntohl(IPPacket->IPHeader.DstIP);
 
 
 }

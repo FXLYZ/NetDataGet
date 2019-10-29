@@ -1,2 +1,6 @@
-﻿libcmt.lib(exe_wwinmain.obj) : error LNK2019: 无法解析的外部符号 _wWinMain@16，该符号在函数 "int __cdecl __scrt_common_main_seh(void)" (?__scrt_common_main_seh@@YAHXZ) 中被引用
+﻿  pch.cpp
+  NetDataGet.cpp
+  NetDataGetDlg.cpp
+  正在生成代码...
+libcmt.lib(exe_wwinmain.obj) : error LNK2019: 无法解析的外部符号 _wWinMain@16，该符号在函数 "int __cdecl __scrt_common_main_seh(void)" (?__scrt_common_main_seh@@YAHXZ) 中被引用
 C:\Users\曾志韬\Desktop\NetDataGet\Debug\NetDataGet.exe : fatal error LNK1120: 1 个无法解析的外部命令

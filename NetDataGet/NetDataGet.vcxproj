@@ -77,12 +77,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <LibraryPath>C:\WpdPack\Lib;$(LibraryPath)</LibraryPath>
-    <IncludePath>C:\WpdPack\Include\pcap;C:\WpdPack\Include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\WpdPack\Include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <LibraryPath>$(LibraryPath)</LibraryPath>
-    <IncludePath>C:\WpdPack\Include\pcap;C:\WpdPack\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\WpdPack\Lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\WpdPack\Include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -100,7 +100,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WPCAP;HAVE_REMOTE</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WPCAP;HAVE_REMOTE;_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>C:\WpdPack\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
