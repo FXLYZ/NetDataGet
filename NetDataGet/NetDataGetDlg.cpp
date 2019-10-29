@@ -271,20 +271,19 @@ UINT TheCapture(LPVOID pParam)
 	msginfo info;
 	info.content = L"pre";
 	msginfo* pinfo = &info;
-	AfxGetApp()->m_pMainWnd->PostMessageW(WM_MYMESSAGE, 0, (LPARAM)pinfo);
 	struct tm* ltime;
 	char timestr[16];
 	struct pcap_pkthdr* header;
 	const u_char* pkt_data;
 	time_t local_tv_sec;
 	pcap_t* adhandle=(pcap_t*)pParam;
-	int res = 0;
+	int res;
 	while ((res = pcap_next_ex(adhandle, &header, &pkt_data)) >= 0) {
 
 		if (res == 0)
 			/* 超时时间到 */
 			continue;
-
+		AfxGetApp()->m_pMainWnd->PostMessageW(WM_MYMESSAGE, 0, (LPARAM)pinfo);
 		/* 将时间戳转换成可识别的格式 */
 		local_tv_sec = header->ts.tv_sec;
 		ltime = localtime(&local_tv_sec);
